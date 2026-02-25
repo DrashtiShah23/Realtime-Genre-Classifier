@@ -1,0 +1,300 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Genre Classifier</title>
+    <style>
+      :root{
+        --bg0:#05070b;
+        --bg1:#0b1020;
+        --card: rgba(255,255,255,.06);
+        --card2: rgba(255,255,255,.08);
+        --stroke: rgba(255,255,255,.10);
+        --text: rgba(255,255,255,.92);
+        --muted: rgba(255,255,255,.62);
+        --muted2: rgba(255,255,255,.40);
+        --shadow: 0 18px 70px rgba(0,0,0,.45);
+        --r: 20px;
+      }
+
+      *{ box-sizing:border-box; }
+      html,body{ height:100%; }
+      body{
+        margin:0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        color: var(--text);
+        background:
+          radial-gradient(900px 700px at 18% 78%, rgba(120,120,255,.22), transparent 55%),
+          radial-gradient(900px 700px at 88% 18%, rgba(0,255,200,.12), transparent 50%),
+          linear-gradient(180deg, var(--bg0), var(--bg1));
+      }
+
+      .app{
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 26px 20px 26px;
+        min-height: 100vh;
+        display:flex;
+        flex-direction:column;
+        gap: 16px;
+      }
+
+      .header{
+        display:flex;
+        align-items:flex-end;
+        justify-content:space-between;
+        gap:18px;
+      }
+
+      .brand{
+        font-size: 28px;
+        font-weight: 780;
+        letter-spacing: -0.02em;
+      }
+      .sub{
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .actions{
+        display:flex;
+        gap:12px;
+        align-items:center;
+        flex-wrap:wrap;
+        justify-content:flex-end;
+      }
+
+      .card{
+        background: linear-gradient(180deg, var(--card2), var(--card));
+        border: 1px solid var(--stroke);
+        border-radius: var(--r);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+        overflow:hidden;
+      }
+
+      .main{
+        display:grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 16px;
+        align-items: stretch;
+        flex: 1;
+      }
+
+      /* LEFT: Visualizer */
+      .viz{
+        position:relative;
+        min-height: 640px;
+      }
+      #viz{
+        width:100%;
+        height:100%;
+        display:block;
+      }
+      .vizOverlay{
+        position:absolute;
+        left:14px;
+        bottom:14px;
+        display:flex;
+        gap:10px;
+      }
+
+      /* RIGHT: Panel */
+      .panel{
+        padding: 18px;
+        min-height: 640px;
+        display:flex;
+        flex-direction:column;
+      }
+
+      .topline{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom: 10px;
+      }
+      .title{
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .divider{
+        height:1px;
+        background: rgba(255,255,255,.10);
+        margin: 14px 0 14px;
+      }
+
+      /* Controls */
+      .file input{ display:none; }
+      .file span{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        height: 38px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        background: rgba(255,255,255,.06);
+        color: var(--text);
+        cursor:pointer;
+        transition: transform .12s ease, background .12s ease;
+        user-select:none;
+      }
+      .file span:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
+
+      button{
+        height: 38px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        background: rgba(255,255,255,.06);
+        color: var(--text);
+        cursor:pointer;
+        display:inline-flex;
+        align-items:center;
+        gap:10px;
+        transition: transform .12s ease, background .12s ease;
+      }
+      button:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
+      .primary{
+        background: rgba(120,120,255,.22);
+        border-color: rgba(120,120,255,.35);
+      }
+
+      .dot{
+        width: 9px;
+        height: 9px;
+        border-radius: 99px;
+        background: rgba(255,255,255,.35);
+      }
+
+      /* Hero */
+      #top{
+        font-weight: 760;
+        font-size: 22px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.06);
+        border: 1px solid var(--stroke);
+        margin-top: 4px;
+      }
+
+      .chip{
+        border: 1px solid var(--stroke);
+        background: rgba(0,0,0,.28);
+        color: var(--muted);
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+      }
+
+      #hud{
+        opacity: 1;
+      }
+
+      .barsTitle{
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+
+      #bars{
+        display:flex;
+        flex-direction:column;
+        gap: 10px;
+        flex: 1;
+        padding-bottom: 8px;
+      }
+
+      /* If you adopted my renderBars() update, these will apply */
+      .barRow{
+        display:grid;
+        grid-template-columns: 82px 1fr 42px;
+        gap:10px;
+        align-items:center;
+      }
+      .barLabel{ color: var(--muted); font-size: 13px; }
+      .barPct{ color: var(--muted2); font-size: 12px; text-align:right; }
+
+      .track{
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.07);
+        border: 1px solid rgba(255,255,255,.10);
+        overflow:hidden;
+      }
+      .fill{
+        height:100%;
+        width: 0%;
+        background: rgba(255,255,255,.85);
+        transition: width 180ms ease;
+        border-radius: 999px;
+      }
+
+      .footerHint{
+        margin-top: 12px;
+        font-size: 12px;
+        color: var(--muted2);
+      }
+
+      @media (max-width: 980px){
+        .main{ grid-template-columns: 1fr; }
+        .viz{ min-height: 420px; }
+        .panel{ min-height: unset; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app">
+      <header class="header">
+        <div>
+          <div class="brand">Real-Time Genre Classifier</div>
+          <div class="sub">CNN • Mel-Spectrograms • FastAPI • WebGL</div>
+        </div>
+
+        <div class="actions">
+          <label class="file">
+            <input id="file" type="file" accept="audio/*" />
+            <span>Upload audio</span>
+          </label>
+
+          <button id="mic" class="primary">
+            <span class="dot"></span>
+            Start Mic
+          </button>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="card viz">
+          <canvas id="viz"></canvas>
+          <div class="vizOverlay">
+            <div class="chip" id="hud">idle</div>
+          </div>
+        </section>
+
+        <section class="card panel">
+          <div class="topline">
+            <div class="title">Predictions</div>
+            <div class="chip" id="latencyChip">—</div>
+          </div>
+
+          <div id="top">Top: —</div>
+
+          <div class="divider"></div>
+
+          <div class="barsTitle">Probabilities</div>
+          <div id="bars"></div>
+
+          <div class="footerHint">Tip: GTZAN clips work best for demo accuracy.</div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
